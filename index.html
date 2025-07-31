@@ -1,47 +1,40 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <title>Decentralized P2P Lending DApp</title>
+  <meta charset="UTF-8">
+  <title>P2P Lending DApp</title>
 </head>
 <body>
-    <h2>Decentralized Peer-to-Peer Lending</h2>
+  <h2>Decentralized P2P Lending</h2>
+  <button onclick="connect()">Connect Wallet</button>
+  <p id="account"></p>
 
-    <button onclick="connect()">Connect Wallet</button>
-    <p id="account"></p>
+  <h3>Request Loan</h3>
+  Amount (wei): <input id="amount"><br>
+  Interest (%): <input id="interest"><br>
+  Duration (seconds): <input id="duration"><br>
+  <button onclick="requestLoan()">Request Loan</button>
 
-    <h3>Request Loan</h3>
-    Amount (wei): <input id="amount" type="text"><br>
-    Interest (%): <input id="interest" type="text"><br>
-    Duration (seconds): <input id="duration" type="text"><br>
-    <button onclick="requestLoan()">Request Loan</button>
-    <br><br>
+  <h3>Fund Loan</h3>
+  Loan ID: <input id="loanIdFund"><br>
+  Amount to send (wei): <input id="fundAmount"><br>
+  <button onclick="fundLoan()">Fund Loan</button>
 
-    <h3>Fund Loan</h3>
-    Loan ID: <input id="loanIdFund" type="text"><br>
-    Amount to send (wei): <input id="fundAmount" type="text"><br>
-    <button onclick="fundLoan()">Fund Loan</button>
-    <br><br>
+  <h3>Repay Loan</h3>
+  Loan ID: <input id="loanIdRepay"><br>
+  Amount to send (wei): <input id="repayAmount"><br>
+  <button onclick="repayLoan()">Repay Loan</button>
 
-    <h3>Repay Loan</h3>
-    Loan ID: <input id="loanIdRepay" type="text"><br>
-    Amount to send (wei): <input id="repayAmount" type="text"><br>
-    <button onclick="repayLoan()">Repay Loan</button>
-    <br><br>
+  <h3>Get Loan Details</h3>
+  Loan ID: <input id="loanIdGet"><br>
+  <button onclick="getLoan()">Get Loan</button>
+  <pre id="loanDetails"></pre>
 
-    <h3>Get Loan Details</h3>
-    Loan ID: <input id="loanIdGet" type="text"><br>
-    <button onclick="getLoan()">Get Loan</button>
-    <p id="loanDetails"></p>
-
-    <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.2/dist/ethers.umd.min.js"></script>
-    <script>
-        let provider;
-        let signer;
-        let contract;
-
-        const contractAddress = "0x4c9915334c1b1d7dd24e10d1f655fd3683b9f157"; // replace
-        const abi = [
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.2/dist/ethers.umd.min.js"></script>
+  <script>
+    let provider, signer, contract;
+    const contractAddress = "0xf0098acc9f80319edafa400dda24864b0b1a4ee1"; // replace
+    const abi = [
 	{
 		"inputs": [
 			{
@@ -198,16 +191,83 @@
 		"outputs": [
 			{
 				"internalType": "uint256",
-				"name": "id",
+				"name": "",
 				"type": "uint256"
 			},
 			{
 				"internalType": "address",
-				"name": "borrower",
+				"name": "",
 				"type": "address"
 			},
 			{
 				"internalType": "address",
+				"name": "",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			},
+			{
+				"internalType": "enum PeerToPeerLending.LoanStatus",
+				"name": "",
+				"type": "uint8"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "loanIdCounter",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "loans",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "id",
+				"type": "uint256"
+			},
+			{
+				"internalType": "address payable",
+				"name": "borrower",
+				"type": "address"
+			},
+			{
+				"internalType": "address payable",
 				"name": "lender",
 				"type": "address"
 			},
@@ -234,6 +294,205 @@
 			{
 				"internalType": "enum PeerToPeerLending.LoanStatus",
 				"name": "status",
+				"type": "uint8"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
+][
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "loanId",
+				"type": "uint256"
+			}
+		],
+		"name": "fundLoan",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "loanId",
+				"type": "uint256"
+			}
+		],
+		"name": "LoanDefaulted",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "loanId",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "lender",
+				"type": "address"
+			}
+		],
+		"name": "LoanFunded",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "loanId",
+				"type": "uint256"
+			}
+		],
+		"name": "LoanRepaid",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "loanId",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "borrower",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "interest",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "duration",
+				"type": "uint256"
+			}
+		],
+		"name": "LoanRequested",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "loanId",
+				"type": "uint256"
+			}
+		],
+		"name": "markAsDefaulted",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "loanId",
+				"type": "uint256"
+			}
+		],
+		"name": "repayLoan",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "interest",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "duration",
+				"type": "uint256"
+			}
+		],
+		"name": "requestLoan",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "loanId",
+				"type": "uint256"
+			}
+		],
+		"name": "getLoan",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			},
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			},
+			{
+				"internalType": "enum PeerToPeerLending.LoanStatus",
+				"name": "",
 				"type": "uint8"
 			}
 		],
@@ -309,78 +568,69 @@
 	}
 ]; // replace
 
-        async function connect() {
-            if (window.ethereum) {
-                await window.ethereum.request({ method: "eth_requestAccounts" });
-                provider = new ethers.BrowserProvider(window.ethereum);
-                signer = await provider.getSigner();
-                contract = new ethers.Contract(contractAddress, abi, signer);
+    async function connect() {
+      if (window.ethereum) {
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        provider = new ethers.BrowserProvider(window.ethereum);
+        signer = await provider.getSigner();
+        contract = new ethers.Contract(contractAddress, abi, signer);
+        const address = await signer.getAddress();
+        document.getElementById('account').innerText = "Connected: " + address;
+      } else {
+        alert("MetaMask not installed");
+      }
+    }
 
-                const address = await signer.getAddress();
-                document.getElementById("account").innerText = "Connected: " + address;
-            } else {
-                alert("MetaMask not detected");
-            }
-        }
+    async function requestLoan() {
+      try {
+        const amount = document.getElementById('amount').value;
+        const interest = document.getElementById('interest').value;
+        const duration = document.getElementById('duration').value;
+        const tx = await contract.requestLoan(amount, interest, duration);
+        await tx.wait();
+        alert('Loan requested!');
+      } catch (e) {
+        alert('Error: ' + e.message);
+        console.error(e);
+      }
+    }
 
-        async function requestLoan() {
-            const amount = document.getElementById("amount").value;
-            const interest = document.getElementById("interest").value;
-            const duration = document.getElementById("duration").value;
-            try {
-                const tx = await contract.requestLoan(amount, interest, duration);
-                await tx.wait();
-                alert("Loan requested!");
-            } catch (e) {
-                console.error(e);
-                alert("Error: " + e.message);
-            }
-        }
+    async function fundLoan() {
+      try {
+        const loanId = document.getElementById('loanIdFund').value;
+        const amount = document.getElementById('fundAmount').value;
+        const tx = await contract.fundLoan(loanId, { value: amount });
+        await tx.wait();
+        alert('Loan funded!');
+      } catch (e) {
+        alert('Error: ' + e.message);
+        console.error(e);
+      }
+    }
 
-        async function fundLoan() {
-            const loanId = document.getElementById("loanIdFund").value;
-            const fundAmount = document.getElementById("fundAmount").value;
-            try {
-                const tx = await contract.fundLoan(loanId, { value: fundAmount });
-                await tx.wait();
-                alert("Loan funded!");
-            } catch (e) {
-                console.error(e);
-                alert("Error: " + e.message);
-            }
-        }
+    async function repayLoan() {
+      try {
+        const loanId = document.getElementById('loanIdRepay').value;
+        const amount = document.getElementById('repayAmount').value;
+        const tx = await contract.repayLoan(loanId, { value: amount });
+        await tx.wait();
+        alert('Loan repaid!');
+      } catch (e) {
+        alert('Error: ' + e.message);
+        console.error(e);
+      }
+    }
 
-        async function repayLoan() {
-            const loanId = document.getElementById("loanIdRepay").value;
-            const repayAmount = document.getElementById("repayAmount").value;
-            try {
-                const tx = await contract.repayLoan(loanId, { value: repayAmount });
-                await tx.wait();
-                alert("Loan repaid!");
-            } catch (e) {
-                console.error(e);
-                alert("Error: " + e.message);
-            }
-        }
-
-        async function getLoan() {
-            const loanId = document.getElementById("loanIdGet").value;
-            try {
-                const loan = await contract.getLoan(loanId);
-                document.getElementById("loanDetails").innerText =
-                    "Loan ID: " + loan[0] +
-                    "\nBorrower: " + loan[1] +
-                    "\nLender: " + loan[2] +
-                    "\nAmount: " + loan[3] +
-                    "\nInterest: " + loan[4] +
-                    "\nDuration: " + loan[5] +
-                    "\nStart Time: " + loan[6] +
-                    "\nStatus: " + loan[7];
-            } catch (e) {
-                console.error(e);
-                alert("Error: " + e.message);
-            }
-        }
-    </script>
+    async function getLoan() {
+      try {
+        const loanId = document.getElementById('loanIdGet').value;
+        const loan = await contract.getLoan(loanId);
+        document.getElementById('loanDetails').innerText = JSON.stringify(loan, null, 2);
+      } catch (e) {
+        alert('Error: ' + e.message);
+        console.error(e);
+      }
+    }
+  </script>
 </body>
 </html>
