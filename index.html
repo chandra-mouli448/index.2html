@@ -1,166 +1,101 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Document-Backed Lending DApp</title>
-  <!-- Load Web3.js -->
-  <script src="https://cdn.jsdelivr.net/npm/web3@1.8.3/dist/web3.min.js"></script>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    body { font-family: 'Segoe UI', sans-serif; transition: all 0.3s; }
-    body.dark { background: #121212; color: #f9fafb; }
-    .container { margin-top: 30px; }
-    .card { padding: 20px; border-radius: 15px; margin-bottom: 20px; }
-    .btn { margin-top: 10px; }
-    .dark-toggle { position: fixed; top: 10px; right: 10px; z-index: 999; }
-    #wallet { font-weight: bold; margin-top: 10px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Document-Backed Lending DApp</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  body { font-family: 'Segoe UI', sans-serif; padding: 20px; }
+  .card { padding: 20px; margin-bottom: 20px; border-radius: 10px; }
+  .btn { margin-top: 10px; }
+</style>
 </head>
 <body>
-  <button class="btn btn-dark dark-toggle" onclick="toggleDark()">🌓 Dark Mode</button>
+<h2 class="text-center mb-4">📜 Document-Backed Lending DApp</h2>
 
-  <div class="container">
-    <h2 class="text-center mb-4">📜 Document-Backed Lending DApp</h2>
+<div class="card">
+  <h5>🔌 Wallet Connection</h5>
+  <button class="btn btn-primary" id="connectBtn">Connect Wallet</button>
+  <p id="wallet">Wallet: Not Connected</p>
+</div>
 
-    <div class="card">
-      <h5>🔌 Wallet Connection</h5>
-      <button class="btn btn-primary" onclick="connectWallet()">Connect Wallet</button>
-      <p id="wallet">Wallet: Not Connected</p>
-    </div>
-
-    <div class="row">
-      <!-- Lender Panel -->
-      <div class="col-md-6">
-        <div class="card bg-light">
-          <h5>💰 Lender Panel</h5>
-          <input id="interestRate" class="form-control mb-2" placeholder="Interest Rate (%)">
-          <input id="loanAmount" class="form-control mb-2" placeholder="Loan Amount (ETH)">
-          <input type="file" id="lenderDoc" class="form-control mb-2">
-          <button class="btn btn-success w-100" onclick="offerLoan()">Offer Loan</button>
-          <button class="btn btn-warning w-100" onclick="resetLoan()">Reset Loan</button>
-        </div>
-      </div>
-
-      <!-- Borrower Panel -->
-      <div class="col-md-6">
-        <div class="card bg-light">
-          <h5>📄 Borrower Panel</h5>
-          <input type="file" id="borrowerDoc" class="form-control mb-2">
-          <button class="btn btn-primary w-100" onclick="submitDocument()">Submit Document</button>
-          <button class="btn btn-purple w-100" onclick="takeLoan()">Take Loan</button>
-          <button class="btn btn-info w-100" onclick="repayLoan()">Repay Loan</button>
-          <p id="status"></p>
-        </div>
-      </div>
+<div class="row">
+  <div class="col-md-6">
+    <div class="card bg-light">
+      <h5>💰 Lender Panel</h5>
+      <input id="interestRate" class="form-control mb-2" placeholder="Interest Rate (%)">
+      <input id="loanAmount" class="form-control mb-2" placeholder="Loan Amount (ETH)">
+      <input type="file" id="lenderDoc" class="form-control mb-2">
+      <button class="btn btn-success w-100" id="offerLoanBtn">Offer Loan</button>
     </div>
   </div>
 
-  <script>
-    let web3;
-    let account;
-    let contract;
+  <div class="col-md-6">
+    <div class="card bg-light">
+      <h5>📄 Borrower Panel</h5>
+      <input type="file" id="borrowerDoc" class="form-control mb-2">
+      <button class="btn btn-primary w-100" id="submitDocBtn">Submit Document</button>
+      <button class="btn btn-info w-100" id="takeLoanBtn">Take Loan</button>
+      <button class="btn btn-warning w-100" id="repayLoanBtn">Repay Loan</button>
+    </div>
+  </div>
+</div>
 
-    // Contract Address & ABI
-    const contractAddress = "0x081C0Dd797dAd42B954154ED6dd81346fac5bA2b";
-    const contractABI = [
-      {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
-      {"inputs":[],"name":"borrower","outputs":[{"internalType":"address payable","name":"","type":"address"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"docSubmitted","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"documentHash","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"interestRate","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"lender","outputs":[{"internalType":"address payable","name":"","type":"address"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"loanAmount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"loanOffered","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"loanRepaid","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"loanStartTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"loanTaken","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
-      {"inputs":[{"internalType":"uint256","name":"_interestRate","type":"uint256"},{"internalType":"bytes32","name":"_docHash","type":"bytes32"}],"name":"offerLoan","outputs":[],"stateMutability":"payable","type":"function"},
-      {"inputs":[],"name":"repayLoan","outputs":[],"stateMutability":"payable","type":"function"},
-      {"inputs":[],"name":"resetLoan","outputs":[],"stateMutability":"nonpayable","type":"function"},
-      {"inputs":[{"internalType":"bytes32","name":"_userDocHash","type":"bytes32"}],"name":"submitDocument","outputs":[],"stateMutability":"nonpayable","type":"function"},
-      {"inputs":[],"name":"takeLoan","outputs":[],"stateMutability":"nonpayable","type":"function"}
-    ];
+<script>
+let account;
+const contractAddress = "0x081C0Dd797dAd42B954154ED6dd81346fac5bA2b";
+const contractABI = [ /* Paste your ABI here */ ];
 
-    function toggleDark() { document.body.classList.toggle('dark'); }
+let contract;
 
-    async function connectWallet() {
-      const status = document.getElementById("wallet");
-      if (window.ethereum) {
-        try {
-          await window.ethereum.request({ method: 'eth_requestAccounts' });
-          web3 = new Web3(window.ethereum);
-          const accounts = await web3.eth.getAccounts();
-          account = accounts[0];
-          status.innerText = 'Wallet: ' + account;
-          contract = new web3.eth.Contract(contractABI, contractAddress);
-          alert("✅ Wallet Connected");
-        } catch (err) {
-          if (err.code === 4001) alert("❌ Connection rejected by user");
-          else alert("❌ Error: " + err.message);
-        }
-      } else {
-        alert("⚠️ Please install MetaMask!");
-      }
+document.getElementById("connectBtn").onclick = async () => {
+  if (window.ethereum) {
+    try {
+      const accounts = await ethereum.request({ method: "eth_requestAccounts" });
+      account = accounts[0];
+      document.getElementById("wallet").innerText = "Wallet: " + account;
+      // Create contract instance using ethers.js-like approach
+      contract = new window.ethers.Contract(contractAddress, contractABI, window.ethereum);
+      alert("✅ Wallet Connected!");
+    } catch (err) {
+      if (err.code === 4001) alert("❌ Connection rejected by user");
+      else alert(err.message);
     }
+  } else {
+    alert("⚠️ Please install MetaMask!");
+  }
+};
 
-    async function getFileHash(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = async () => {
-          const buffer = reader.result;
-          const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-          const hashArray = Array.from(new Uint8Array(hashBuffer));
-          const hashHex = "0x" + hashArray.map(b => b.toString(16).padStart(2,'0')).join('');
-          resolve(hashHex);
-        };
-        reader.onerror = reject;
-        reader.readAsArrayBuffer(file);
-      });
-    }
+// Helper to hash files
+async function getFileHash(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return '0x' + hashArray.map(b => b.toString(16).padStart(2,'0')).join('');
+}
 
-    // Lender functions
-    async function offerLoan() {
-      if (!account) return alert("Connect wallet first!");
-      const rate = document.getElementById('interestRate').value;
-      const amount = document.getElementById('loanAmount').value;
-      const file = document.getElementById('lenderDoc').files[0];
-      if (!file) return alert("Upload document!");
-      const hash = await getFileHash(file);
-      try {
-        await contract.methods.offerLoan(rate, hash).send({ from: account, value: web3.utils.toWei(amount, 'ether') });
-        alert("✅ Loan Offered");
-      } catch (err) { console.error(err); alert("❌ Offer failed"); }
-    }
-
-    async function resetLoan() {
-      if (!account) return alert("Connect wallet first!");
-      try { await contract.methods.resetLoan().send({ from: account }); alert("✅ Loan Reset"); }
-      catch(err){ console.error(err); alert("❌ Reset failed"); }
-    }
-
-    // Borrower functions
-    async function submitDocument() {
-      if (!account) return alert("Connect wallet first!");
-      const file = document.getElementById('borrowerDoc').files[0];
-      if (!file) return alert("Upload document!");
-      const hash = await getFileHash(file);
-      try { await contract.methods.submitDocument(hash).send({ from: account }); alert("✅ Document Submitted"); }
-      catch(err){ console.error(err); alert("❌ Submit failed"); }
-    }
-
-    async function takeLoan() {
-      if (!account) return alert("Connect wallet first!");
-      try { await contract.methods.takeLoan().send({ from: account }); alert("✅ Loan Taken"); }
-      catch(err){ console.error(err); alert("❌ Take loan failed"); }
-    }
-
-    async function repayLoan() {
-      if (!account) return alert("Connect wallet first!");
-      try { await contract.methods.repayLoan().send({ from: account }); alert("✅ Loan Repaid"); }
-      catch(err){ console.error(err); alert("❌ Repay failed"); }
-    }
-
-  </script>
+// Example for offerLoan
+document.getElementById("offerLoanBtn").onclick = async () => {
+  if (!account) return alert("Connect wallet first!");
+  const rate = document.getElementById('interestRate').value;
+  const amount = document.getElementById('loanAmount').value;
+  const file = document.getElementById('lenderDoc').files[0];
+  if (!file) return alert("Upload document!");
+  const hash = await getFileHash(file);
+  try {
+    await ethereum.request({
+      method: 'eth_sendTransaction',
+      params: [{
+        from: account,
+        to: contractAddress,
+        value: (parseFloat(amount) * 1e18).toString(16),
+        data: contract.methods.offerLoan(rate, hash).encodeABI()
+      }]
+    });
+    alert("✅ Loan Offered");
+  } catch (err) { console.error(err); alert("❌ Offer failed"); }
+};
+</script>
 </body>
 </html>
