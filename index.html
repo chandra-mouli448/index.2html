@@ -5,10 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Document-Backed Lending DApp</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/ethers/dist/ethers.min.js"></script>
 <style>
-  body { font-family: 'Segoe UI', sans-serif; padding: 20px; }
-  .card { padding: 20px; margin-bottom: 20px; border-radius: 10px; }
-  .btn { margin-top: 10px; }
+  body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f4f6f9; }
+  .card { padding: 20px; margin-bottom: 20px; border-radius: 12px; box-shadow: 0px 4px 10px rgba(0,0,0,0.1); }
+  h2 { font-weight: bold; color: #2c3e50; }
+  .btn { margin-top: 10px; border-radius: 8px; }
 </style>
 </head>
 <body>
@@ -44,30 +46,27 @@
 
 <script>
 let account;
-const contractAddress = "0x081C0Dd797dAd42B954154ED6dd81346fac5bA2b";
-const contractABI = [ /* Paste your ABI here */ ];
+const contractAddress = "0x95A7bF06c04b889700e6E71784B3DD1c8EDCAdC7"; 
+const contractABI = [ /* paste ABI here (the one you sent me) */ ];
 
-let contract;
+let provider, signer, contract;
 
 document.getElementById("connectBtn").onclick = async () => {
   if (window.ethereum) {
-    try {
-      const accounts = await ethereum.request({ method: "eth_requestAccounts" });
-      account = accounts[0];
-      document.getElementById("wallet").innerText = "Wallet: " + account;
-      // Create contract instance using ethers.js-like approach
-      contract = new window.ethers.Contract(contractAddress, contractABI, window.ethereum);
-      alert("✅ Wallet Connected!");
-    } catch (err) {
-      if (err.code === 4001) alert("❌ Connection rejected by user");
-      else alert(err.message);
-    }
+    provider = new ethers.providers.Web3Provider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    signer = provider.getSigner();
+    account = await signer.getAddress();
+    contract = new ethers.Contract(contractAddress, contractABI, signer);
+
+    document.getElementById("wallet").innerText = "Wallet: " + account;
+    alert("✅ Wallet Connected!");
   } else {
     alert("⚠️ Please install MetaMask!");
   }
 };
 
-// Helper to hash files
+// Hash function for documents
 async function getFileHash(file) {
   const arrayBuffer = await file.arrayBuffer();
   const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
@@ -75,26 +74,23 @@ async function getFileHash(file) {
   return '0x' + hashArray.map(b => b.toString(16).padStart(2,'0')).join('');
 }
 
-// Example for offerLoan
+// Offer Loan
 document.getElementById("offerLoanBtn").onclick = async () => {
-  if (!account) return alert("Connect wallet first!");
+  if (!contract) return alert("⚠️ Connect wallet first!");
   const rate = document.getElementById('interestRate').value;
   const amount = document.getElementById('loanAmount').value;
   const file = document.getElementById('lenderDoc').files[0];
-  if (!file) return alert("Upload document!");
+  if (!file) return alert("⚠️ Upload document first!");
   const hash = await getFileHash(file);
+
   try {
-    await ethereum.request({
-      method: 'eth_sendTransaction',
-      params: [{
-        from: account,
-        to: contractAddress,
-        value: (parseFloat(amount) * 1e18).toString(16),
-        data: contract.methods.offerLoan(rate, hash).encodeABI()
-      }]
-    });
+    const tx = await contract.offerLoan(rate, hash, { value: ethers.utils.parseEther(amount) });
+    await tx.wait();
     alert("✅ Loan Offered");
-  } catch (err) { console.error(err); alert("❌ Offer failed"); }
+  } catch (err) {
+    console.error(err);
+    alert("❌ Offer failed");
+  }
 };
 </script>
 </body>
