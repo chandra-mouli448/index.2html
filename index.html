@@ -1,348 +1,112 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Loan DApp</title>
-  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
-  <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #1d2671, #c33764);
-      color: #fff;
-      text-align: center;
-      padding: 30px;
-    }
+import React, { useState } from "react";
+import { ethers } from "ethers";
 
-    h2 {
-      color: #ffeb3b;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
-    }
+// ✅ Replace with your ABI & Contract Address
+const contractABI = [ /* paste your ABI here */ ];
+const contractAddress = "0xC2e0620752E4115cA679d71Ad2c9ee63f2d046Fc";
 
-    h3 {
-      color: #00e676;
-      margin-top: 30px;
-    }
+export default function LoanDapp() {
+  const [wallet, setWallet] = useState(null);
+  const [fileHash, setFileHash] = useState("");
+  const [status, setStatus] = useState("");
+  const [fileName, setFileName] = useState("");
 
-    input {
-      padding: 10px;
-      margin: 8px;
-      border: none;
-      border-radius: 8px;
-      width: 250px;
-      font-size: 14px;
-    }
-
-    button {
-      background: #ff5722;
-      color: #fff;
-      border: none;
-      padding: 12px 20px;
-      margin: 10px;
-      border-radius: 10px;
-      font-size: 15px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-
-    button:hover {
-      background: #e64a19;
-      transform: scale(1.05);
-    }
-
-    #walletAddress {
-      font-weight: bold;
-      color: #00bcd4;
-      margin-top: 15px;
-    }
-
-    hr {
-      border: 1px solid rgba(255,255,255,0.3);
-      margin: 30px 0;
-    }
-  </style>
-</head>
-<body>
-  <h2>🚀 Decentralized Loan DApp</h2>
-
-  <!-- Wallet -->
-  <button onclick="connectWallet()">🔗 Connect Wallet</button>
-  <p id="walletAddress">Not Connected</p>
-
-  <hr>
-
-  <!-- Offer Loan -->
-  <h3>💰 Offer Loan</h3>
-  <input type="number" id="loanAmount" placeholder="Loan Amount (ETH)">
-  <input type="number" id="interestRate" placeholder="Interest Rate (%)">
-  <input type="text" id="docHash" placeholder="Document (any string)">
-  <br>
-  <button onclick="offerLoan()">✅ Offer Loan</button>
-
-  <hr>
-
-  <!-- Take Loan -->
-  <h3>📥 Take Loan</h3>
-  <button onclick="takeLoan()">⚡ Take Loan</button>
-
-  <hr>
-
-  <!-- Repay Loan -->
-  <h3>💸 Repay Loan</h3>
-  <input type="number" id="repayAmount" placeholder="Repay Amount (ETH)">
-  <br>
-  <button onclick="repayLoan()">💳 Repay Loan</button>
-
-  <script>
-    let web3;
-    let contract;
-    let account;
-
-    const contractAddress = "0x1c91347f2A44538ce62453BEBd9Aa907C662b4bD";
-    const contractABI = [
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "_interestRate",
-				"type": "uint256"
-			},
-			{
-				"internalType": "bytes32",
-				"name": "_docHash",
-				"type": "bytes32"
-			}
-		],
-		"name": "offerLoan",
-		"outputs": [],
-		"stateMutability": "payable",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "repayLoan",
-		"outputs": [],
-		"stateMutability": "payable",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "resetLoan",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "bytes32",
-				"name": "_userDocHash",
-				"type": "bytes32"
-			}
-		],
-		"name": "submitDocument",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "takeLoan",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"stateMutability": "nonpayable",
-		"type": "constructor"
-	},
-	{
-		"inputs": [],
-		"name": "borrower",
-		"outputs": [
-			{
-				"internalType": "address payable",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "docSubmitted",
-		"outputs": [
-			{
-				"internalType": "bool",
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "documentHash",
-		"outputs": [
-			{
-				"internalType": "bytes32",
-				"name": "",
-				"type": "bytes32"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "interestRate",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "lender",
-		"outputs": [
-			{
-				"internalType": "address payable",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "loanAmount",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "loanOffered",
-		"outputs": [
-			{
-				"internalType": "bool",
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "loanRepaid",
-		"outputs": [
-			{
-				"internalType": "bool",
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "loanStartTime",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "loanTaken",
-		"outputs": [
-			{
-				"internalType": "bool",
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	}
-];
-
-    async function connectWallet() {
-      if (window.ethereum) {
-        web3 = new Web3(window.ethereum);
-        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-        account = accounts[0];
-        contract = new web3.eth.Contract(contractABI, contractAddress);
-        document.getElementById("walletAddress").innerText = "✅ Connected: " + account;
-      } else {
-        alert("Please install MetaMask");
-      }
-    }
-
-    async function offerLoan() {
-      const amount = document.getElementById("loanAmount").value;
-      const rate = document.getElementById("interestRate").value;
-      const docHashInput = document.getElementById("docHash").value;
-      if (!amount || !rate || !docHashInput) return alert("Please enter all fields");
-      const docHash = web3.utils.asciiToHex(docHashInput);
-
+  // Connect wallet
+  const connectWallet = async () => {
+    if (window.ethereum) {
       try {
-        await contract.methods.offerLoan(rate, docHash).send({
-          from: account,
-          value: web3.utils.toWei(amount, "ether")
-        });
-        alert("🎉 Loan offered successfully!");
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        const signer = await provider.getSigner();
+        setWallet(signer);
+        setStatus("✅ Wallet Connected!");
       } catch (err) {
         console.error(err);
-        alert("❌ Offer loan failed");
+        setStatus("❌ Wallet Connection Failed");
       }
+    } else {
+      alert("Install MetaMask!");
+    }
+  };
+
+  // File upload & hash calculation
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setFileName(file.name);
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const fileBuffer = new Uint8Array(event.target.result);
+      const hash = ethers.keccak256(fileBuffer);
+      setFileHash(hash);
+      setStatus(`📂 File "${file.name}" uploaded & hashed!`);
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  // Submit Document
+  const submitDocument = async () => {
+    if (!wallet || !fileHash) {
+      setStatus("⚠️ Connect wallet & upload file first!");
+      return;
     }
 
-    async function takeLoan() {
-      try {
-        await contract.methods.takeLoan().send({ from: account });
-        alert("🎉 Loan taken successfully!");
-      } catch (err) {
-        console.error(err);
-        alert("❌ Take loan failed");
-      }
+    try {
+      const contract = new ethers.Contract(contractAddress, contractABI, wallet);
+      const tx = await contract.submitDocument(fileHash);
+      await tx.wait();
+      setStatus("✅ Document submitted successfully!");
+    } catch (err) {
+      console.error(err);
+      setStatus("❌ Transaction Failed");
     }
+  };
 
-    async function repayLoan() {
-      const repayAmount = document.getElementById("repayAmount").value;
-      if (!repayAmount) return alert("Enter repay amount");
-      try {
-        await contract.methods.repayLoan().send({
-          from: account,
-          value: web3.utils.toWei(repayAmount, "ether")
-        });
-        alert("🎉 Loan repaid successfully!");
-      } catch (err) {
-        console.error(err);
-        alert("❌ Repay loan failed");
-      }
-    }
-  </script>
-</body>
-</html>
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-r from-purple-600 via-pink-500 to-red-500 p-6">
+      <div className="bg-white shadow-2xl rounded-2xl p-8 w-full max-w-lg text-center">
+        <h1 className="text-3xl font-extrabold text-purple-700 mb-6">
+          🌈 Decentralized Loan DApp
+        </h1>
+
+        {/* Connect Wallet */}
+        <button
+          onClick={connectWallet}
+          className="mb-6 px-6 py-3 rounded-xl bg-gradient-to-r from-green-400 to-green-600 text-white font-bold shadow-lg hover:scale-105 transition"
+        >
+          {wallet ? "✅ Wallet Connected" : "🔗 Connect Wallet"}
+        </button>
+
+        {/* File Upload */}
+        <div className="mb-6">
+          <label className="block text-lg font-semibold text-gray-700 mb-2">
+            📂 Upload Document
+          </label>
+          <input
+            type="file"
+            accept="*/*"
+            onChange={handleFileUpload}
+            className="block w-full text-sm text-gray-700 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+          {fileName && (
+            <p className="mt-2 text-sm text-gray-600">Selected: {fileName}</p>
+          )}
+        </div>
+
+        {/* Submit Button */}
+        <button
+          onClick={submitDocument}
+          className="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold shadow-lg hover:scale-105 transition"
+        >
+          🚀 Submit Document
+        </button>
+
+        {/* Status */}
+        {status && (
+          <p className="mt-6 text-lg font-medium text-gray-800">{status}</p>
+        )}
+      </div>
+    </div>
+  );
+}
