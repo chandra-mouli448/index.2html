@@ -1,99 +1,131 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Document-Backed Lending DApp</title>
-<script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-<style>
-  body { font-family: 'Segoe UI', sans-serif; transition: 0.3s; background: #f3f4f6; color: #1f2937; }
-  body.dark-mode { background: #121212; color: #f9fafb; }
-  .container { margin-top: 50px; }
-  .btn { border-radius: 12px; margin-top: 5px; }
-  .dark-toggle { position: fixed; top: 10px; right: 10px; }
-  #walletMessage { font-weight: bold; margin-top: 10px; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document-Backed Lending DApp</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background: #f3f4f6; padding: 20px; }
+    .container { max-width: 800px; margin: auto; }
+    button { margin-top: 10px; }
+    .dark-mode { background: #121212; color: white; }
+  </style>
 </head>
 <body>
 
-<button class="btn btn-dark dark-toggle" onclick="toggleDarkMode()">🌓 Toggle Dark Mode</button>
-
 <div class="container">
-  <h2 class="text-center mb-4">📜 Document-Backed Lending DApp</h2>
+  <h2>📜 Document-Backed Lending DApp</h2>
 
-  <div class="card p-4 mb-4">
-    <h5>🔌 Wallet Connection</h5>
-    <button class="btn btn-primary w-100" onclick="connectWallet()">Connect Wallet</button>
-    <p id="walletMessage"></p>
-  </div>
+  <button class="btn btn-primary" onclick="connectWallet()">Connect MetaMask</button>
+  <p id="walletAddress"></p>
 
-  <div class="row">
-    <div class="col-md-6 mb-4">
-      <div class="card p-4">
-        <h5>💰 Lender Panel</h5>
-        <input id="interestRate" class="form-control mb-2" placeholder="Interest Rate (%)">
-        <input id="loanAmount" class="form-control mb-2" placeholder="Loan Amount (in ETH)">
-        <input type="file" id="lenderDoc" class="form-control mb-3">
-        <button class="btn btn-success w-100" onclick="offerLoan()">Offer Loan</button>
-      </div>
-    </div>
+  <hr>
 
-    <div class="col-md-6 mb-4">
-      <div class="card p-4">
-        <h5>📄 Borrower Panel</h5>
-        <input type="file" id="borrowerDoc" class="form-control mb-3">
-        <button class="btn btn-warning w-100 mb-2" onclick="submitDocument()">Submit Document</button>
-        <button class="btn btn-primary w-100 mb-2" onclick="takeLoan()">Take Loan</button>
-        <button class="btn btn-purple w-100 mb-2" onclick="repayLoan()">Repay Loan</button>
-        <p id="repayStatus"></p>
-      </div>
-    </div>
-  </div>
+  <h4>Lender Panel</h4>
+  <input id="interestRate" type="number" class="form-control" placeholder="Interest Rate (%)">
+  <input id="loanAmount" type="number" class="form-control" placeholder="Loan Amount (ETH)">
+  <input type="file" id="lenderDoc" class="form-control">
+  <button class="btn btn-success" onclick="offerLoan()">Offer Loan</button>
+
+  <hr>
+
+  <h4>Borrower Panel</h4>
+  <input type="file" id="borrowerDoc" class="form-control">
+  <button class="btn btn-warning" onclick="submitDocument()">Submit Document</button>
+  <button class="btn btn-primary" onclick="takeLoan()">Take Loan</button>
+  <button class="btn btn-secondary" onclick="repayLoan()">Repay Loan</button>
+
+  <p id="status"></p>
 </div>
 
 <script>
 let web3;
 let account;
-const contractAddress = "0x081C0Dd797dAd42B954154ED6dd81346fac5bA2b"; // your contract
-const contractABI = [/* Your ABI here */];
 let contract;
 
-// Dark mode toggle
-function toggleDarkMode() { document.body.classList.toggle("dark-mode"); }
+// Replace with your contract address
+const contractAddress = "0x081C0Dd797dAd42B954154ED6dd81346fac5bA2b";
 
-// Connect wallet with clear messages
+// Replace with your contract ABI
+const contractABI = [
+	{
+		"inputs":[{"internalType":"uint256","name":"_interestRate","type":"uint256"},{"internalType":"bytes32","name":"_docHash","type":"bytes32"}],
+		"name":"offerLoan","outputs":[],"stateMutability":"payable","type":"function"
+	},
+	{"inputs":[],"name":"repayLoan","outputs":[],"stateMutability":"payable","type":"function"},
+	{"inputs":[],"name":"resetLoan","outputs":[],"stateMutability":"nonpayable","type":"function"},
+	{"inputs":[{"internalType":"bytes32","name":"_userDocHash","type":"bytes32"}],
+		"name":"submitDocument","outputs":[],"stateMutability":"nonpayable","type":"function"},
+	{"inputs":[],"name":"takeLoan","outputs":[],"stateMutability":"nonpayable","type":"function"}
+];
+
 async function connectWallet() {
-  const walletMsg = document.getElementById("walletMessage");
+  const status = document.getElementById("walletAddress");
   if (window.ethereum) {
-    web3 = new Web3(window.ethereum);
     try {
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      await window.ethereum.request({ method: 'eth_requestAccounts' });
+      web3 = new Web3(window.ethereum);
+      const accounts = await web3.eth.getAccounts();
       account = accounts[0];
-      walletMsg.innerText = `✅ Connected: ${account}`;
-      walletMsg.style.color = "green";
+      status.innerText = `✅ Connected: ${account}`;
       contract = new web3.eth.Contract(contractABI, contractAddress);
-    } catch (error) {
-      if (error.code === 4001) { // user denied
-        walletMsg.innerText = "❌ Connection denied. Please approve MetaMask to continue.";
-        walletMsg.style.color = "red";
-      } else {
-        walletMsg.innerText = "❌ Error connecting wallet.";
-        walletMsg.style.color = "red";
-      }
+    } catch (err) {
+      if(err.code === 4001) status.innerText = "❌ Connection denied by user";
+      else status.innerText = "❌ Error connecting wallet";
     }
   } else {
-    walletMsg.innerText = "⚠️ MetaMask not detected. Please install MetaMask!";
-    walletMsg.style.color = "orange";
+    status.innerText = "⚠️ Please install MetaMask";
   }
 }
 
-// Dummy functions (replace with your actual contract calls)
-function offerLoan(){ alert("Offer Loan clicked"); }
-function submitDocument(){ alert("Submit Document clicked"); }
-function takeLoan(){ alert("Take Loan clicked"); }
-function repayLoan(){ alert("Repay Loan clicked"); }
+// Utility: hash file using SHA-256
+async function getFileHash(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const buffer = reader.result;
+      const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = "0x" + hashArray.map(b => b.toString(16).padStart(2,'0')).join('');
+      resolve(hashHex);
+    };
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+}
 
+async function offerLoan() {
+  const rate = document.getElementById("interestRate").value;
+  const amount = document.getElementById("loanAmount").value;
+  const file = document.getElementById("lenderDoc").files[0];
+  if (!file) return alert("Upload document");
+
+  const hash = await getFileHash(file);
+  await contract.methods.offerLoan(rate, hash).send({ from: account, value: web3.utils.toWei(amount, 'ether') });
+  alert("Loan offered successfully!");
+}
+
+async function submitDocument() {
+  const file = document.getElementById("borrowerDoc").files[0];
+  if (!file) return alert("Upload document");
+
+  const hash = await getFileHash(file);
+  await contract.methods.submitDocument(hash).send({ from: account });
+  alert("Document submitted!");
+}
+
+async function takeLoan() {
+  await contract.methods.takeLoan().send({ from: account });
+  alert("Loan taken!");
+}
+
+async function repayLoan() {
+  await contract.methods.repayLoan().send({ from: account });
+  alert("Loan repaid!");
+}
 </script>
+
 </body>
 </html>
