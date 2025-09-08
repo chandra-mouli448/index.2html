@@ -5,9 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Document-Backed Lending DApp</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 <style>
-  body { font-family: 'Segoe UI', sans-serif; padding: 20px; }
-  .card { padding: 20px; margin-bottom: 20px; border-radius: 10px; }
+  body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f0f8ff; }
+  .card { padding: 20px; margin-bottom: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
   .btn { margin-top: 10px; }
 </style>
 </head>
@@ -35,66 +36,31 @@
     <div class="card bg-light">
       <h5>📄 Borrower Panel</h5>
       <input type="file" id="borrowerDoc" class="form-control mb-2">
-      <button class="btn btn-primary w-100" id="submitDocBtn">Submit Document</button>
-      <button class="btn btn-info w-100" id="takeLoanBtn">Take Loan</button>
-      <button class="btn btn-warning w-100" id="repayLoanBtn">Repay Loan</button>
+      <button class="btn btn-primary w-100">Submit Document</button>
+      <button class="btn btn-info w-100">Take Loan</button>
+      <button class="btn btn-warning w-100">Repay Loan</button>
     </div>
   </div>
 </div>
 
 <script>
-let account;
+let account, provider, signer, contract;
 const contractAddress = "0x081C0Dd797dAd42B954154ED6dd81346fac5bA2b";
-const contractABI = [ /* Paste your ABI here */ ];
-
-let contract;
+const contractABI = [ /* paste ABI here */ ];
 
 document.getElementById("connectBtn").onclick = async () => {
   if (window.ethereum) {
-    try {
-      const accounts = await ethereum.request({ method: "eth_requestAccounts" });
-      account = accounts[0];
-      document.getElementById("wallet").innerText = "Wallet: " + account;
-      // Create contract instance using ethers.js-like approach
-      contract = new window.ethers.Contract(contractAddress, contractABI, window.ethereum);
-      alert("✅ Wallet Connected!");
-    } catch (err) {
-      if (err.code === 4001) alert("❌ Connection rejected by user");
-      else alert(err.message);
-    }
+    provider = new ethers.providers.Web3Provider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    signer = provider.getSigner();
+    account = await signer.getAddress();
+    document.getElementById("wallet").innerText = "Wallet: " + account;
+
+    contract = new ethers.Contract(contractAddress, contractABI, signer);
+    alert("✅ Wallet Connected!");
   } else {
     alert("⚠️ Please install MetaMask!");
   }
-};
-
-// Helper to hash files
-async function getFileHash(file) {
-  const arrayBuffer = await file.arrayBuffer();
-  const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return '0x' + hashArray.map(b => b.toString(16).padStart(2,'0')).join('');
-}
-
-// Example for offerLoan
-document.getElementById("offerLoanBtn").onclick = async () => {
-  if (!account) return alert("Connect wallet first!");
-  const rate = document.getElementById('interestRate').value;
-  const amount = document.getElementById('loanAmount').value;
-  const file = document.getElementById('lenderDoc').files[0];
-  if (!file) return alert("Upload document!");
-  const hash = await getFileHash(file);
-  try {
-    await ethereum.request({
-      method: 'eth_sendTransaction',
-      params: [{
-        from: account,
-        to: contractAddress,
-        value: (parseFloat(amount) * 1e18).toString(16),
-        data: contract.methods.offerLoan(rate, hash).encodeABI()
-      }]
-    });
-    alert("✅ Loan Offered");
-  } catch (err) { console.error(err); alert("❌ Offer failed"); }
 };
 </script>
 </body>
